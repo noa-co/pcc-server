@@ -59,11 +59,11 @@ void send_file_in_chunks(file_data* fd, int sockfd){
     int write_out = 0;
     char buffer[BUFFER_SIZE]; 
 
-    while(bytes_read = fread(buffer, 1, BUFFER_SIZE, fd)>0){ // todo - think about error
+    while(bytes_read = fread(buffer, 1, BUFFER_SIZE, fp)>0){ // todo - think about error
         write_out = write(sockfd, buffer, bytes_read);
         if( write_out <= 0 ){
-            printf(stderr, "Error sending file data bytes. err- %s \n", strerror(errno));
-            return 1;
+            fprintf(stderr, "Error sending file data bytes. err- %s \n", strerror(errno));
+            exit(1);
         }
     }
     
@@ -104,28 +104,27 @@ int main(int argc, char* argv[]){
     // connect socket to the target address
     if( connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0)
     {
-        printf(stderr, "Connect to server failed. err- %s \n", strerror(errno));
+        fprintf(stderr, "Connect to server failed. err- %s \n", strerror(errno));
         return 1;
     }
     
     // send N
-    write_out = write(sockfd, file_info->size, sizeof(uint32_t));
+    write_out = write(sockfd, &(file_info->size), sizeof(uint32_t));
     if( write_out <= 0 ){
-        printf(stderr, "Error sending server N. err- %s \n", strerror(errno));
+        fprintf(stderr, "Error sending server N. err- %s \n", strerror(errno));
         return 1;
     }
 
     send_file_in_chunks(file_info, sockfd);
 
     // revc num printable characters
-    bytes_read = read(sockfd, printable_rcvd, sizeof(uint32_t));
+    bytes_read = read(sockfd, &printable_rcvd, sizeof(uint32_t));
     if( bytes_read <= 0 ){
-        printf(stderr, "Error reading message from server. err- %s \n", strerror(errno));
+        fprintf(stderr, "Error reading message from server. err- %s \n", strerror(errno));
         return 1;   
     }
 
     printf("# of printable characters: %u\n", printable_rcvd);
-    close(file_info->fp);
     free(file_info);
     close(sockfd);
     return 0;

@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -130,9 +131,9 @@ int  main(int argc, char *argv[]){
             return 1;
         }
 
-        bytes_read = read(connfd, client_N, sizeof(uint32_t));
+        bytes_read = read(connfd, &client_N, sizeof(uint32_t));
         if( bytes_read <= 0 ){
-            printf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+            fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
                 continue; // continuing to next connection
             }
@@ -146,7 +147,7 @@ int  main(int argc, char *argv[]){
         {
             bytes_read = read(connfd, bytes_buffer, BUFFER_SIZE);
             if( bytes_read <= 0 ){
-                printf(stderr, "Error reading bytes data from client. err- %s \n", strerror(errno));
+                fprintf(stderr, "Error reading bytes data from client. err- %s \n", strerror(errno));
                 if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
                     move_to_next_client = 1;
                     break;
@@ -164,9 +165,9 @@ int  main(int argc, char *argv[]){
             continue;
         }
 
-        write_out = write(connfd, printable_count, sizeof(uint32_t));
+        write_out = write(connfd, &printable_count, sizeof(uint32_t));
         if( write_out <= 0 ){
-            printf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
+            fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
                 reset_pcc(pcc_client, 95);
                 close(connfd);
