@@ -59,6 +59,10 @@ uint16_t parse_port_num(char* str){
         fprintf(stderr, "error parsing port number. err- %s\n", strerror(errno));
         exit(1);
     }
+    if(l<1024){
+        fprintf(stderr, "invalid port number.\n");
+        exit(1);
+    }
     return (uint16_t)l;
 
 }
@@ -94,7 +98,7 @@ int  main(int argc, char *argv[]){
     socklen_t addrsize = sizeof(struct sockaddr_in );
 
     if(argc < 2){
-        fprintf(stderr, "invalid number of arguments. err- %s \n", strerror(errno));
+        fprintf(stderr, "invalid number of arguments.\n");
         return 1;
     }
 
