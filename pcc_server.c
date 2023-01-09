@@ -40,7 +40,7 @@ int count_printable_bytes(char bytes_buffer[], int size, uint32_t pcc_count[]){
         if(char_num < 32 || char_num > 126)
             continue;
         count++;
-        pcc_count[char_num-32] = pcc_count[char_num-32] + 1; // todo - make sure set to zero at begining
+        pcc_count[char_num-32] = pcc_count[char_num-32] + 1;
     }
     return count;
 }
@@ -109,7 +109,7 @@ int  main(int argc, char *argv[]){
         return 1;
     }
 
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){ // todo make sure
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){
         fprintf(stderr, "failed to setsocketopt SO_REUSEADDR. err- %s \n", strerror(errno));
         return 1;
     }

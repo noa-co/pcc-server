@@ -12,7 +12,6 @@
 #define BUFFER_SIZE 1000000 // 1MB
 
 // note - a lot of code copied from rec10 code examples
-// todo - make sure N in network byte order
 struct f_data{
     uint32_t size;
     FILE* fp;
@@ -65,7 +64,7 @@ void send_file_in_chunks(file_data* fd, int sockfd){
     int write_out = 0;
     char buffer[BUFFER_SIZE]; 
 
-    while((bytes_read = fread(buffer, 1, BUFFER_SIZE, fp))>0){ // todo - think about error
+    while((bytes_read = fread(buffer, 1, BUFFER_SIZE, fp))>0){ 
         write_out = write(sockfd, buffer, bytes_read);
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending file data bytes. err- %s \n", strerror(errno));
