@@ -9,20 +9,28 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#define BUFFER_SIZE 1000000 // 1MB
 
 // note - a lot of code copied from rec10 code examples
-
+// todo - make sure N in network byte order
 struct f_data{
     uint32_t size;
-    char* data;
+    FILE* fp;
 } typedef file_data;
 
-file_data* read_file(char* file_path){
-    // make sure file exits
-    // read it and create struct
-    // what to do with data buffer size comment? should i split?
-    // return null if err
-    // make sure N in network byte order
+file_data* open_file(char* file_path){
+    uint32_t size;
+    file_data* fd;
+    FILE *fp = fopen(file_path, "rb");
+    if(fp == NULL){
+        return NULL;
+    }
+    fseek(fp, 0 , SEEK_END); // goes to end of file
+    size = (uint32_t)ftell(fp);
+
+    fd = (file_data*)malloc(sizeof(file_data));
+    fd->size = size;
+    fd->fp = fp;
 }
 
 void create_server_address(struct sockaddr_in* serv_addr, uint16_t port_num, char* serv_ip){
@@ -42,11 +50,28 @@ uint16_t parse_port_num(char* str){
 
 }
 
+void send_file_in_chunks(file_data* fd, int sockfd){
+    FILE* fp = fd->fp;
+    size_t bytes_read = 0;
+    int write_out = 0;
+    char buffer[BUFFER_SIZE]; 
+
+    while(bytes_read = fread(buffer, 1, BUFFER_SIZE, fd)>0){ // todo - think about error
+        write_out = write(sockfd, buffer, bytes_read);
+        if( write_out <= 0 ){
+            printf(stderr, "Error sending file data bytes. err- %s \n", strerror(errno));
+            return 1;
+        }
+    }
+    
+}
+
 int main(int argc, char* argv[]){
     int  sockfd     = -1;
     long l;
     int  bytes_read =  0, write_out = 0;
     file_data* file_info;
+    char send_buff[1024];
     uint32_t printable_rcvd;
     uint16_t port_num;
     struct sockaddr_in serv_addr;
@@ -56,7 +81,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    file_info = read_file(argv[3]);
+    file_info = open_file(argv[3]);
     if(file_info == NULL){
         fprintf(stderr, "error reading file. err- %s \n", strerror(errno));
         return 1;
@@ -87,12 +112,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    // send file data
-    write_out = write(sockfd, file_info->data, file_info->size);
-    if( write_out <= 0 ){
-        printf(stderr, "Error sending server file data bytes. err- %s \n", strerror(errno));
-        return 1;
-    }
+    send_file_in_chunks(file_info, sockfd);
 
     // revc num printable characters
     bytes_read = read(sockfd, printable_rcvd, sizeof(uint32_t));
