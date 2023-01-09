@@ -34,6 +34,7 @@ file_data* open_file(char* file_path){
     }
     fd->size = size;
     fd->fp = fp;
+    return fd;
 }
 
 void create_server_address(struct sockaddr_in* serv_addr, uint16_t port_num, char* serv_ip){
@@ -59,7 +60,7 @@ void send_file_in_chunks(file_data* fd, int sockfd){
     int write_out = 0;
     char buffer[BUFFER_SIZE]; 
 
-    while(bytes_read = fread(buffer, 1, BUFFER_SIZE, fp)>0){ // todo - think about error
+    while((bytes_read = fread(buffer, 1, BUFFER_SIZE, fp))>0){ // todo - think about error
         write_out = write(sockfd, buffer, bytes_read);
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending file data bytes. err- %s \n", strerror(errno));
@@ -71,10 +72,8 @@ void send_file_in_chunks(file_data* fd, int sockfd){
 
 int main(int argc, char* argv[]){
     int  sockfd     = -1;
-    long l;
     int  bytes_read =  0, write_out = 0;
     file_data* file_info;
-    char send_buff[1024];
     uint32_t printable_rcvd;
     uint16_t port_num;
     struct sockaddr_in serv_addr;
