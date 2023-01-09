@@ -122,7 +122,7 @@ int main(int argc, char* argv[]){
     }
 
     printf("# of printable characters: %u\n", printable_rcvd);
-
+    close(file_info->fp);
     close(sockfd);
     return 0;
 

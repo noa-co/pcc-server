@@ -4,16 +4,42 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #define BUFFER_SIZE 1000000 // 1MB
 
-int count_printable(){
+// todo - also in client, handle connection lost in middle of comut
+
+int no_sigint = 1; // global so sigint can change it
+
+int count_printable_bytes(char bytes_buffer[], int size){
     // byte b is printable if 32<=b<=126
-    // add count[b] ++
+    // add count[b-32] ++
 }
 
+void print_and_exit(uint32_t pcc_total[], int size){
+    int i;
+    for (i = 0; i < size; i++){
+        printf("char '%c' : %u times\n", (char)(i+32), pcc_total[i]);
+    }
+    exit(0);
+}
+
+uint16_t parse_port_num(char* str){
+    long l = strtol(str, NULL, 10);
+    if(errno || l<0 || l >= 0x10000){
+        fprintf(stderr, "error parsing port number. err- %s\n", strerror(errno));
+        exit(1);
+    }
+    return (uint16_t)l;
+
+}
+
+
 void sigint_handler(){
-    // print counts
-    // exit
+    no_sigint = 0;
 }
 
 void set_sigint_handler(){
@@ -24,5 +50,88 @@ void set_sigint_handler(){
     if (sigac_out == -1){
        fprintf(stderr, "couldnt set sigint action. err: %s\n", strerror(errno)); 
     }
+}
+
+int  main(int argc, char *argv[]){
+    int listenfd  = -1, connfd = -1;
+    int bytes_read = 0, write_out = 0;
+    struct sockaddr_in serv_addr;
+    struct sockaddr_in peer_addr;
+    uint32_t pcc_total[95];
+    uint16_t port_num;
+    uint32_t client_N, left_to_read, printable_count;
+    char bytes_buffer[BUFFER_SIZE];
+    socklen_t addrsize = sizeof(struct sockaddr_in );
+
+    if(argc < 2){
+        fprintf(stderr, "invalid number of arguments. err- %s \n", strerror(errno));
+        return 1;
+    }
+
+    port_num = parse_port_num(argv[1]);
+
+    if((listenfd = socket( AF_INET, SOCK_STREAM, 0 )) < 0){
+        fprintf(stderr, "failed creating listening socket. err- %s \n", strerror(errno));
+        return 1;
+    }
+
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){ // todo make sure
+        fprintf(stderr, "failed to setsocketopt SO_REUSEADDR. err- %s \n", strerror(errno));
+        return 1;
+    }
+
+    memset( &serv_addr, 0, addrsize);
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(port_num);
+    if( 0 != bind( listenfd, (struct sockaddr*) &serv_addr, addrsize)) {
+        fprintf(stderr, "failed to bind. err- %s \n", strerror(errno));
+        return 1;
+    }
+
+    if( 0 != listen( listenfd, 10 )){
+        fprintf(stderr, "failed to listen. err- %s \n", strerror(errno));
+        return 1;
+    }
+
+    set_sigint_handler();
+    while(no_sigint) // todo - what if had 10 connections and no sigint
+    {
+        connfd = accept( listenfd, (struct sockaddr*) &peer_addr, &addrsize);
+        if(connfd < 0){    
+            fprintf(stderr, "failed to accept client connection. err- %s \n", strerror(errno));
+            return 1;
+        }
+
+        bytes_read = read(connfd, client_N, sizeof(uint32_t));
+        if( bytes_read <= 0 ){
+            printf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+            return 1;   
+        }
+
+        printable_count = 0;
+        left_to_read = client_N;
+        while (left_to_read > 0)
+        {
+            bytes_read = read(connfd, bytes_buffer, BUFFER_SIZE);
+            if( bytes_read <= 0 ){
+                printf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+                return 1;   
+            }
+            printable_count = printable_count + count_printable_bytes(bytes_buffer, bytes_read);
+            left_to_read = left_to_read - bytes_read;
+        }
+
+        write_out = write(connfd, printable_count, sizeof(uint32_t));
+        if( write_out <= 0 ){
+            printf(stderr, "Error sending server N. err- %s \n", strerror(errno));
+            return 1;
+        }
+        // todo here update pcc_total
+        close(connfd);
+    }
+    print_and_exit(pcc_total, 95);
+    return 0;
 }
 
