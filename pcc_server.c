@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#define BUFFER_SIZE 1000000 // 1MB
 
 int count_printable(){
     // byte b is printable if 32<=b<=126
