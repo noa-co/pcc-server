@@ -74,6 +74,7 @@ int main(int argc, char* argv[]){
     int  sockfd     = -1;
     int  bytes_read =  0, write_out = 0;
     file_data* file_info;
+    uint32_t N_to_send;
     uint32_t printable_rcvd;
     uint16_t port_num;
     struct sockaddr_in serv_addr;
@@ -108,7 +109,8 @@ int main(int argc, char* argv[]){
     }
     
     // send N
-    write_out = write(sockfd, &(file_info->size), sizeof(uint32_t));
+    N_to_send = htonl(file_info->size);
+    write_out = write(sockfd, &N_to_send, sizeof(uint32_t));
     if( write_out <= 0 ){
         fprintf(stderr, "Error sending server N. err- %s \n", strerror(errno));
         return 1;
@@ -122,7 +124,7 @@ int main(int argc, char* argv[]){
         fprintf(stderr, "Error reading message from server. err- %s \n", strerror(errno));
         return 1;   
     }
-
+    printable_rcvd = ntohl(printable_rcvd);
     printf("# of printable characters: %u\n", printable_rcvd);
     free(file_info);
     close(sockfd);

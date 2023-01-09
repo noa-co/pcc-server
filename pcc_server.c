@@ -11,9 +11,10 @@
 
 #define BUFFER_SIZE 1000000 // 1MB
 
-// todo - also in client, handle connection lost in middle of comut
-
-int no_sigint = 1; // global so sigint can change it
+// global variables for sigint to use
+int no_sigint = 1; 
+int connfd = -1;
+uint32_t pcc_total[95] = {0};
 
 void reset_pcc(uint32_t pcc_client[], int size){
     int i;
@@ -22,7 +23,7 @@ void reset_pcc(uint32_t pcc_client[], int size){
     }
 }
 
-void update_pcc_and_reset(uint32_t pcc_total[], uint32_t pcc_client[], int size){
+void update_pcc_and_reset(uint32_t pcc_client[], int size){
     int i;
     for (i=0; i<size; i++){
         pcc_total[i] = pcc_total[i] + pcc_client[i];
@@ -44,9 +45,9 @@ int count_printable_bytes(char bytes_buffer[], int size, uint32_t pcc_count[]){
     return count;
 }
 
-void print_and_exit(uint32_t pcc_total[], int size){
+void print_and_exit(){
     int i;
-    for (i = 0; i < size; i++){
+    for (i = 0; i < 95; i++){
         printf("char '%c' : %u times\n", (char)(i+32), pcc_total[i]);
     }
     exit(0);
@@ -63,17 +64,20 @@ uint16_t parse_port_num(char* str){
 }
 
 void sigint_handler(){
+    if(connfd == -1){
+        print_and_exit();
+    }
     no_sigint = 0;
-    // todo - maybe more edge cases to cover
 }
 
 void set_sigint_handler(){
     struct sigaction sig_info;
     sig_info.sa_flags = SA_RESTART;
-    sig_info.sa_handler = sigint_handler;
+    sig_info.sa_handler = &sigint_handler;
     int sigac_out = sigaction(SIGINT, &sig_info, 0);
     if (sigac_out == -1){
        fprintf(stderr, "couldnt set sigint action. err: %s\n", strerror(errno)); 
+       exit(1);
     }
 }
 
@@ -83,8 +87,7 @@ int  main(int argc, char *argv[]){
     int move_to_next_client = 0;
     struct sockaddr_in serv_addr;
     struct sockaddr_in peer_addr;
-    uint32_t pcc_total[95];
-    uint32_t pcc_client[95];
+    uint32_t pcc_client[95] = {0};
     uint16_t port_num;
     uint32_t client_N, left_to_read, printable_count;
     char bytes_buffer[BUFFER_SIZE];
@@ -135,14 +138,16 @@ int  main(int argc, char *argv[]){
         if( bytes_read <= 0 ){
             fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                connfd = -1;
                 continue; // continuing to next connection
             }
             return 1;   
         }
+        
 
         move_to_next_client = 0;
         printable_count = 0;
-        left_to_read = client_N;
+        left_to_read = ntohl(client_N);
         while (left_to_read > 0)
         {
             bytes_read = read(connfd, bytes_buffer, BUFFER_SIZE);
@@ -165,6 +170,7 @@ int  main(int argc, char *argv[]){
             continue;
         }
 
+        printable_count = htonl(printable_count);
         write_out = write(connfd, &printable_count, sizeof(uint32_t));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
@@ -176,11 +182,11 @@ int  main(int argc, char *argv[]){
             }
             return 1;
         }
-        update_pcc_and_reset(pcc_total, pcc_client, 95);
+        update_pcc_and_reset(pcc_client, 95);
         close(connfd);
         connfd = -1;
     }
-    print_and_exit(pcc_total, 95);
+    print_and_exit();
     return 0;
 }
 
