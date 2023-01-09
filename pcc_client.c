@@ -29,6 +29,9 @@ file_data* open_file(char* file_path){
     size = (uint32_t)ftell(fp);
 
     fd = (file_data*)malloc(sizeof(file_data));
+    if (fd == NULL){
+        return NULL;
+    }
     fd->size = size;
     fd->fp = fp;
 }
@@ -123,6 +126,7 @@ int main(int argc, char* argv[]){
 
     printf("# of printable characters: %u\n", printable_rcvd);
     close(file_info->fp);
+    free(file_info);
     close(sockfd);
     return 0;
 

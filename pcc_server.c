@@ -14,9 +14,33 @@
 
 int no_sigint = 1; // global so sigint can change it
 
-int count_printable_bytes(char bytes_buffer[], int size){
-    // byte b is printable if 32<=b<=126
-    // add count[b-32] ++
+void reset_pcc(uint32_t pcc_client[], int size){
+    int i;
+    for (i=0; i<size; i++){
+        pcc_client[i] = 0;
+    }
+}
+
+void update_pcc_and_reset(uint32_t pcc_total[], uint32_t pcc_client[], int size){
+    int i;
+    for (i=0; i<size; i++){
+        pcc_total[i] = pcc_total[i] + pcc_client[i];
+        pcc_client[i] = 0;
+    }
+}
+
+int count_printable_bytes(char bytes_buffer[], int size, uint32_t pcc_count[]){
+    int i;
+    int count = 0;
+    uint32_t char_num;
+    for (i=0; i < size; i++){
+        char_num = (uint32_t)bytes_buffer[i];
+        if(char_num < 32 || char_num > 126)
+            continue;
+        count++;
+        pcc_count[char_num-32] = pcc_count[char_num-32] + 1; // todo - make sure set to zero at begining
+    }
+    return count;
 }
 
 void print_and_exit(uint32_t pcc_total[], int size){
@@ -37,9 +61,9 @@ uint16_t parse_port_num(char* str){
 
 }
 
-
 void sigint_handler(){
     no_sigint = 0;
+    // todo - maybe more edge cases to cover
 }
 
 void set_sigint_handler(){
@@ -55,9 +79,11 @@ void set_sigint_handler(){
 int  main(int argc, char *argv[]){
     int listenfd  = -1, connfd = -1;
     int bytes_read = 0, write_out = 0;
+    int move_to_next_client = 0;
     struct sockaddr_in serv_addr;
     struct sockaddr_in peer_addr;
     uint32_t pcc_total[95];
+    uint32_t pcc_client[95];
     uint16_t port_num;
     uint32_t client_N, left_to_read, printable_count;
     char bytes_buffer[BUFFER_SIZE];
@@ -96,7 +122,7 @@ int  main(int argc, char *argv[]){
     }
 
     set_sigint_handler();
-    while(no_sigint) // todo - what if had 10 connections and no sigint
+    while(no_sigint) 
     {
         connfd = accept( listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         if(connfd < 0){    
@@ -107,29 +133,51 @@ int  main(int argc, char *argv[]){
         bytes_read = read(connfd, client_N, sizeof(uint32_t));
         if( bytes_read <= 0 ){
             printf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+            if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                continue; // continuing to next connection
+            }
             return 1;   
         }
 
+        move_to_next_client = 0;
         printable_count = 0;
         left_to_read = client_N;
         while (left_to_read > 0)
         {
             bytes_read = read(connfd, bytes_buffer, BUFFER_SIZE);
             if( bytes_read <= 0 ){
-                printf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+                printf(stderr, "Error reading bytes data from client. err- %s \n", strerror(errno));
+                if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                    move_to_next_client = 1;
+                    break;
+                }
                 return 1;   
             }
-            printable_count = printable_count + count_printable_bytes(bytes_buffer, bytes_read);
+            printable_count = printable_count + count_printable_bytes(bytes_buffer, bytes_read, pcc_client);
             left_to_read = left_to_read - bytes_read;
+        }
+
+        if(move_to_next_client){
+            reset_pcc(pcc_client, 95);
+            close(connfd);
+            connfd = -1;
+            continue;
         }
 
         write_out = write(connfd, printable_count, sizeof(uint32_t));
         if( write_out <= 0 ){
-            printf(stderr, "Error sending server N. err- %s \n", strerror(errno));
+            printf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
+            if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                reset_pcc(pcc_client, 95);
+                close(connfd);
+                connfd = -1;
+                continue;
+            }
             return 1;
         }
-        // todo here update pcc_total
+        update_pcc_and_reset(pcc_total, pcc_client, 95);
         close(connfd);
+        connfd = -1;
     }
     print_and_exit(pcc_total, 95);
     return 0;
