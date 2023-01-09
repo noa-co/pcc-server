@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
+// note - a lot of code copied from rec10 code examples
+
 struct f_data{
     uint32_t size;
     char* data;
@@ -21,6 +23,23 @@ file_data* read_file(char* file_path){
     // what to do with data buffer size comment? should i split?
     // return null if err
     // make sure N in network byte order
+}
+
+void create_server_address(struct sockaddr_in* serv_addr, uint16_t port_num, char* serv_ip){
+    memset(serv_addr, 0, sizeof(*serv_addr));
+    serv_addr->sin_family = AF_INET;
+    serv_addr->sin_port = htons(port_num); 
+    inet_pton(AF_INET, serv_ip, &(serv_addr->sin_addr));
+}
+
+uint16_t parse_port_num(char* str){
+    long l = strtol(str, NULL, 10);
+    if(errno || l<0 || l >= 0x10000){
+        fprintf(stderr, "error parsing port number. err- %s\n", strerror(errno));
+        exit(1);
+    }
+    return (uint16_t)l;
+
 }
 
 int main(int argc, char* argv[]){
@@ -50,18 +69,8 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    l = strtol(argv[2], NULL, 10);
-    if(errno || l<0 || l >= 0x10000){
-        fprintf(stderr, "error parsing port number. err- %s\n", strerror(errno));
-        return 1;
-    }
-    port_num = (uint16_t)l;
-
-    // create server address data
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port_num); 
-    inet_pton(AF_INET, argv[1], &(serv_addr.sin_addr));
+    port_num = parse_port_num(argv[2]); 
+    create_server_address(&serv_addr, port_num, argv[1]);
 
     printf("Client: connecting...\n");
     // connect socket to the target address
