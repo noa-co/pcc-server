@@ -27,6 +27,7 @@ file_data* open_file(char* file_path){
     }
     fseek(fp, 0 , SEEK_END); // goes to end of file
     size = (uint32_t)ftell(fp);
+    fseek(fp, 0 , SEEK_SET); // go back to beginning
 
     fd = (file_data*)malloc(sizeof(file_data));
     if (fd == NULL){
