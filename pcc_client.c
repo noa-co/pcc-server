@@ -116,7 +116,7 @@ int main(int argc, char* argv[]){
     // send N
     N_to_send = htonl(file_info->size);
     buff_to_send = (char*)(&N_to_send);
-    to_write = strlen(N_to_send);
+    to_write = sizeof(N_to_send);
     while(to_write > 0 ){
         write_out = write(sockfd, buff_to_send, sizeof(uint32_t));
         if( write_out <= 0 ){
