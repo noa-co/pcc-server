@@ -13,6 +13,7 @@
 
 // global variables for sigint to use
 int no_sigint = 1; 
+int listenfd = -1;
 int connfd = -1;
 uint32_t pcc_total[95] = {0};
 
@@ -50,6 +51,7 @@ void print_and_exit(){
     for (i = 0; i < 95; i++){
         printf("char '%c' : %u times\n", (char)(i+32), pcc_total[i]);
     }
+    close(listenfd);
     exit(0);
 }
 
@@ -86,7 +88,6 @@ void set_sigint_handler(){
 }
 
 int  main(int argc, char *argv[]){
-    int listenfd  = -1, connfd = -1;
     int bytes_read = 0, write_out = 0;
     int move_to_next_client = 0;
     struct sockaddr_in serv_addr;
@@ -142,6 +143,7 @@ int  main(int argc, char *argv[]){
         if( bytes_read <= 0 ){
             fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                close(connfd);
                 connfd = -1;
                 continue; // continuing to next connection
             }
@@ -178,7 +180,7 @@ int  main(int argc, char *argv[]){
         write_out = write(connfd, &printable_count, sizeof(uint32_t));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
-            if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+            if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
                 reset_pcc(pcc_client, 95);
                 close(connfd);
                 connfd = -1;
