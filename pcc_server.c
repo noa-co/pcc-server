@@ -176,7 +176,7 @@ int  main(int argc, char *argv[]){
         }
 
         printable_count = htonl(printable_count);
-        write_out = write(connfd, &printable_count, sizeof(uint32_t));
+        write_out = write(connfd, (char*)&printable_count, sizeof(unsigned int));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
             if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
