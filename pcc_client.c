@@ -76,8 +76,8 @@ void send_file_in_chunks(file_data* fd, int sockfd){
 
 int main(int argc, char* argv[]){
     int  sockfd     = -1;
-    int to_write = 0;
-    char* buff_to_send;
+    int to_write = 0, to_read = 0;
+    char *buff_to_send, *buff_to_read;
     int  bytes_read =  0, write_out = 0;
     file_data* file_info;
     uint32_t N_to_send;
@@ -130,10 +130,16 @@ int main(int argc, char* argv[]){
     send_file_in_chunks(file_info, sockfd);
 
     // revc num printable characters
-    bytes_read = read(sockfd, &printable_rcvd, sizeof(uint32_t));
-    if( bytes_read <= 0 ){
-        fprintf(stderr, "Error reading message from server. err- %s \n", strerror(errno));
-        return 1;   
+    buff_to_read = (char*)(&printable_rcvd);
+    to_read = sizeof(unsigned int);
+    while (to_read > 0){
+        bytes_read = read(sockfd, buff_to_read, sizeof(uint32_t));
+        if( bytes_read <= 0 ){
+            fprintf(stderr, "Error reading message from server. err- %s \n", strerror(errno));
+            return 1;   
+        }
+        buff_to_read += bytes_read;
+        to_read -= bytes_read;
     }
     printable_rcvd = ntohl(printable_rcvd);
     printf("# of printable characters: %u\n", printable_rcvd);
