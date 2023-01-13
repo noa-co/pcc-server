@@ -104,7 +104,6 @@ int main(int argc, char* argv[]){
     port_num = parse_port_num(argv[2]); 
     create_server_address(&serv_addr, port_num, argv[1]);
 
-    printf("Client: connecting...\n");
     // connect socket to the target address
     if( connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0)
     {
