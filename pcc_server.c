@@ -138,7 +138,7 @@ int  main(int argc, char *argv[]){
             return 1;
         }
 
-        bytes_read = read(connfd, &client_N, sizeof(uint32_t));
+        bytes_read = read(connfd, ((char*)&client_N), sizeof(unsigned int));
         if( bytes_read <= 0 ){
             fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
@@ -176,7 +176,7 @@ int  main(int argc, char *argv[]){
         }
 
         printable_count = htonl(printable_count);
-        write_out = write(connfd, (char*)&printable_count, sizeof(unsigned int));
+        write_out = write(connfd, ((char*)&printable_count), sizeof(unsigned int));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
             if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
