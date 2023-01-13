@@ -77,7 +77,7 @@ void send_file_in_chunks(file_data* fd, int sockfd){
 int main(int argc, char* argv[]){
     int  sockfd     = -1;
     int to_write = 0;
-    int total_sent = 0;
+    char* buff_to_send;
     int  bytes_read =  0, write_out = 0;
     file_data* file_info;
     uint32_t N_to_send;
@@ -115,14 +115,15 @@ int main(int argc, char* argv[]){
     
     // send N
     N_to_send = htonl(file_info->size);
+    buff_to_send = (char*)(&N_to_send);
     to_write = strlen(N_to_send);
     while(to_write > 0 ){
-        write_out = write(sockfd, (&N_to_send) + total_sent, sizeof(uint32_t));
+        write_out = write(sockfd, buff_to_send, sizeof(uint32_t));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending server N. err- %s \n", strerror(errno));
             return 1;
         }
-        total_sent += write_out;
+        buff_to_send += write_out;
         to_write -= write_out;
     }
 
