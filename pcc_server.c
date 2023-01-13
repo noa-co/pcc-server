@@ -89,6 +89,8 @@ void set_sigint_handler(){
 
 int  main(int argc, char *argv[]){
     int bytes_read = 0, write_out = 0;
+    int to_write = 0, to_read = 0;
+    char *buff_to_send, *buff_to_read;
     int move_to_next_client = 0;
     struct sockaddr_in serv_addr;
     struct sockaddr_in peer_addr;
@@ -139,17 +141,24 @@ int  main(int argc, char *argv[]){
             return 1;
         }
 
-        bytes_read = read(connfd, &client_N, sizeof(uint32_t));
-        if( bytes_read <= 0 ){
-            fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
-            if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
-                close(connfd);
-                connfd = -1;
-                continue; // continuing to next connection
+        // add loop shit
+        buff_to_read = (char*)(&client_N);
+        to_read = sizeof(unsigned int);
+        while (to_read > 0){
+            bytes_read = read(connfd, buff_to_read, to_read);
+            if( bytes_read <= 0 ){
+                fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
+                if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                    close(connfd);
+                    connfd = -1;
+                    continue; // continuing to next connection
+                }
+                return 1;   
             }
-            return 1;   
+            buff_to_read += bytes_read;
+            to_read -= bytes_read;
         }
-        
+    
 
         move_to_next_client = 0;
         printable_count = 0;
@@ -177,17 +186,24 @@ int  main(int argc, char *argv[]){
         }
 
         printable_count = htonl(printable_count);
-        write_out = write(connfd, &printable_count, sizeof(uint32_t));
-        if( write_out <= 0 ){
-            fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
-            if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
-                reset_pcc(pcc_client, 95);
-                close(connfd);
-                connfd = -1;
-                continue;
+        buff_to_send = (char*)(&printable_count);
+        to_write = sizeof(printable_count);
+        while(to_write > 0 ){
+            write_out = write(connfd, buff_to_send, to_write);
+            if( write_out <= 0 ){
+                fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
+                if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                    reset_pcc(pcc_client, 95);
+                    close(connfd);
+                    connfd = -1;
+                    continue;
+                }
+                return 1;
             }
-            return 1;
+            buff_to_send += write_out;
+            to_write -= write_out;
         }
+        
         update_pcc_and_reset(pcc_client, 95);
         close(connfd);
         connfd = -1;
