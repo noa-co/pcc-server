@@ -142,6 +142,7 @@ int  main(int argc, char *argv[]){
         if( bytes_read <= 0 ){
             fprintf(stderr, "Error reading N from client. err- %s \n", strerror(errno));
             if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+                close(connfd);
                 connfd = -1;
                 continue; // continuing to next connection
             }
@@ -178,7 +179,7 @@ int  main(int argc, char *argv[]){
         write_out = write(connfd, &printable_count, sizeof(uint32_t));
         if( write_out <= 0 ){
             fprintf(stderr, "Error sending printable count to client. err- %s \n", strerror(errno));
-            if (bytes_read == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
+            if (write_out == 0 || errno == ETIMEDOUT || errno == ECONNRESET || errno == EPIPE){
                 reset_pcc(pcc_client, 95);
                 close(connfd);
                 connfd = -1;
